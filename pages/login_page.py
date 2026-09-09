@@ -34,4 +34,3 @@ class Login:
         )
         WebRunner().click(page, sign_out_locator, function_name, trace, report)
         WebRunner().explicit_wait_presence_of_element(page, self.EMAIL_INPUT, "css", function_name, trace, report)
-
