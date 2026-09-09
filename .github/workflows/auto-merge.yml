@@ -1,9 +1,9 @@
 name: Enable PR Auto-Merge
 
 on:
-  workflow_run:
-    workflows: [Playwright CI]
-    types: [completed]
+  pull_request_target:
+    branches: [main]
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: write
@@ -12,7 +12,6 @@ permissions:
 jobs:
   enable-auto-merge:
     name: Enable squash auto-merge
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
     steps:
@@ -21,31 +20,58 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const branch = context.payload.workflow_run.head_branch;
+            const pullRequest = context.payload.pull_request;
             const repository = context.repo;
-            const pullRequests = await github.paginate(github.rest.pulls.list, {
-              owner: repository.owner,
-              repo: repository.repo,
-              state: 'open',
-              head: `${repository.owner}:${branch}`,
-              base: 'main'
-            });
+            const sha = pullRequest.head.sha;
+            const timeout = Date.now() + 10 * 60 * 1000;
+            let check;
 
-            if (pullRequests.length === 0) {
-              core.notice(`No open pull request found for ${branch}.`);
+            while (Date.now() < timeout) {
+              const checks = await github.rest.checks.listForRef({
+                owner: repository.owner,
+                repo: repository.repo,
+                ref: sha,
+                per_page: 100
+              });
+              check = checks.data.check_runs.find(run => run.name === 'Playwright tests');
+              if (check && check.status === 'completed') break;
+              await new Promise(resolve => setTimeout(resolve, 15000));
+            }
+
+            if (!check || check.status !== 'completed') {
+              core.setFailed('Timed out waiting for the Playwright tests check.');
+              return;
+            }
+            if (check.conclusion !== 'success') {
+              core.setFailed(`Playwright tests finished with conclusion: ${check.conclusion}`);
               return;
             }
 
-            const pullRequest = pullRequests[0];
-            await github.graphql(`
-              mutation($pullRequestId: ID!) {
-                enablePullRequestAutoMerge(input: {
-                  pullRequestId: $pullRequestId,
-                  mergeMethod: SQUASH
-                }) {
-                  pullRequest { number }
+            try {
+              await github.graphql(`
+                mutation($pullRequestId: ID!) {
+                  enablePullRequestAutoMerge(input: {
+                    pullRequestId: $pullRequestId,
+                    mergeMethod: SQUASH
+                  }) {
+                    pullRequest { number }
+                  }
                 }
-              }
-            `, { pullRequestId: pullRequest.node_id });
+              `, { pullRequestId: pullRequest.node_id });
+              core.notice(`Squash auto-merge enabled for PR #${pullRequest.number}.`);
+            } catch (error) {
+              if (!error.message.includes('Pull request is in clean status')) throw error;
 
-            core.notice(`Squash auto-merge enabled for PR #${pullRequest.number}.`);
+              const merge = await github.rest.pulls.merge({
+                owner: repository.owner,
+                repo: repository.repo,
+                pull_number: pullRequest.number,
+                sha,
+                merge_method: 'squash'
+              });
+              if (!merge.data.merged) {
+                core.setFailed(`Clean PR could not be merged: ${merge.data.message}`);
+                return;
+              }
+              core.notice(`PR #${pullRequest.number} was clean, so it was squash-merged directly.`);
+            }
