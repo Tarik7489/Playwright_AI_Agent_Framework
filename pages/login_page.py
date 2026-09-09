@@ -1,5 +1,3 @@
-import time
-
 from playwright.sync_api import Page
 
 from utils.web_runner import WebRunner
@@ -28,7 +26,6 @@ class Login:
         sign_in_locator = WebRunner().web_locator(page, self.LOGIN_BUTTON, "css", function_name, trace, report)
         WebRunner().click(page, sign_in_locator, function_name, trace, report)
         page.wait_for_load_state("domcontentloaded")
-        time.sleep(2)
 
     def sign_out(self, page: Page, trace=None, report=None) -> None:
         function_name = self.sign_out.__name__
