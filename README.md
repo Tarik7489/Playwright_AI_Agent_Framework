@@ -73,6 +73,25 @@ git push -u origin feature/my-change
 The branch workflow then creates the PR automatically. Auto-merge waits for the
 required checks and branch-protection approval; it does not bypass review.
 
+## Jenkins CI/CD
+
+The root `Jenkinsfile` provides the same flow for Jenkins:
+
+```text
+checkout branch -> install Python/Playwright -> run tests -> create/update PR -> squash-merge
+```
+
+Configure a Jenkins Pipeline or Multibranch Pipeline with a Linux agent that has
+Python 3 and Git. Add a Jenkins **Secret text** credential with ID
+`github-token`; its value must be a GitHub token with permission to create and
+merge pull requests. The Jenkins job also needs the repository checkout
+credentials configured.
+
+For a Multibranch Pipeline, configure GitHub Branch Source webhooks and point it
+at this repository. Every branch push will run the `Jenkinsfile`. The `main`
+branch runs tests and archives reports; non-`main` branches also create/update a
+PR and squash-merge it after tests pass.
+
 ## Framework conventions
 
 - Keep selectors and page-specific actions in `pages/`.
