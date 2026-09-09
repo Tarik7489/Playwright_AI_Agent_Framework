@@ -1,0 +1,8 @@
+__pycache__/
+.pytest_cache/
+.venv/
+reports/
+artifacts/
+*.pyc
+test_data/*.xlsx
+test_data/*.json
