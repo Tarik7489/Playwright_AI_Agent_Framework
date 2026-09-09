@@ -95,3 +95,16 @@ jobs:
                 body
               });
             }
+
+            const merge = await github.rest.pulls.merge({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pullRequest.number,
+              sha: pullRequest.head.sha,
+              merge_method: 'squash'
+            });
+            if (!merge.data.merged) {
+              core.setFailed(`Pull request could not be merged: ${merge.data.message}`);
+              return;
+            }
+            core.notice(`Pull request #${pullRequest.number} was squash-merged into main.`);
