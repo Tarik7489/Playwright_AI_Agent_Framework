@@ -95,17 +95,3 @@ jobs:
                 body
               });
             }
-            try {
-              await github.graphql(`
-                mutation($pullRequestId: ID!) {
-                  enablePullRequestAutoMerge(input: {
-                    pullRequestId: $pullRequestId,
-                    mergeMethod: SQUASH
-                  }) {
-                    pullRequest { number }
-                  }
-                }
-              `, { pullRequestId: pullRequest.node_id });
-            } catch (error) {
-              core.warning(`Auto-merge was not enabled. Enable repository auto-merge and branch protection first: ${error.message}`);
-            }

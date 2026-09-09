@@ -47,9 +47,12 @@ The repository includes two workflows:
 
 - `.github/workflows/branch-pr.yml`: on every non-`main` branch push, installs the
   framework, runs the Excel-driven tests, creates or updates a PR to `main`, adds
-  `automation` and `copilot-review` labels, and requests a Copilot review.
+	`automation` and `copilot-review` labels, and requests a Copilot review.
 - `.github/workflows/ci.yml`: runs the required test check for pull requests and
   pushes to `main`, and uploads the HTML report and failure artifacts.
+- `.github/workflows/auto-merge.yml`: waits for `Playwright CI` to finish
+	successfully, then enables squash auto-merge for the matching open PR. This
+	avoids requesting auto-merge while the PR is still unstable.
 
 One-time repository setup:
 
@@ -60,6 +63,11 @@ One-time repository setup:
 	participate in pull requests.
 4. Add `AWS_Test_Data.xlsx` only if it contains non-sensitive test data. Move real
 	passwords and tokens to GitHub Actions secrets before publishing the repository.
+
+The first time this workflow is introduced, merge the PR containing
+`auto-merge.yml` into `main` once. GitHub loads `workflow_run` workflows from the
+default branch; after that bootstrap merge, future feature-branch PRs can be
+handled without manual auto-merge intervention.
 
 After setup, use:
 
